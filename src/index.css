@@ -1,1 +1,24 @@
 @import "tailwindcss";
+
+@theme {
+    /*Main Color Theme*/
+    --color-dusk-900: #0a1124;
+    --color-dusk-800: #111b36;
+    --color-dusk-700: #1f294b;
+    --color-dusk-600: #333f64;
+    --color-dusk-fg: #ece4d2 ;
+    --color-dusk-mute: #a39e8e;
+    --color-dusk-dim: #6e6a5e;
+    --color-dusk-danger: #d97a5a;
+    --color-amber: #e0a458;
+    --color-amber-soft: #f0c688;
+
+    /*Transparent Elements*/
+    --color-line: rgba(232,225,210,0.10);
+    --color-line-hi: rgba(232,225,210,0.18);
+    --shadow-amber-sm: inset 0 0 8px rgb(248 184 118 / 0.68);
+
+    /*Fonts*/
+    --font-display: "EB Garamond", Georgia, serif;
+    --font-sans: "Manrope", system-ui, sans-serif;
+}
