@@ -65,7 +65,7 @@ export async function fetchPlaylists(accessToken) {
 
 export async function fetchPlaylistTracks(accessToken, playlistId) {
   const results = []
-  let url = `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100&fields=next,items(track(id,name,artists,duration_ms,uri,album(images)))`
+  let url = `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100`
   while (url) {
     const data = await spotifyFetch(url, accessToken)
     results.push(...data.items.filter(item => item.track?.id))
