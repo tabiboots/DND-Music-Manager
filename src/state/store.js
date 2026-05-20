@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { TAGS, TRACKS, PLAYLISTS, PRESETS, TAG_MAP } from '../data/mocks.js'
+import { TRACKS, PLAYLISTS } from '../data/mocks.js'
 import { fetchUserData } from '../lib/apiClient.js'
 
 export const useStore = create((set, get) => ({
@@ -12,7 +12,7 @@ export const useStore = create((set, get) => ({
     tagMap:    {},       // loaded from API — { [trackId]: string[] }
 
     // ── User data loading ─────────────────────────────────────────
-    userDataLoading: false,
+    userDataLoading: true,
 
     // ── UI: active playlist ───────────────────────────────────────
     activePlaylistId: 'liked',
@@ -66,7 +66,14 @@ export const useStore = create((set, get) => ({
             const tagMap = Object.fromEntries(
                 trackTags.map(({ track_id, tag_ids }) => [track_id, tag_ids])
             )
-            set({ tags, tagMap, presets })
+            const normalizedPresets = presets.map(p => ({
+                id:         p.id,
+                label:      p.label,
+                tagIds:     p.tag_ids,
+                matchMode:  p.match_mode,
+                lastUsedAt: p.last_used_at,
+            }))
+            set({ tags, tagMap, presets: normalizedPresets })
         } catch (e) {
             console.error('Failed to load user data:', e)
         } finally {
