@@ -19,6 +19,7 @@ export async function redirectToAuthCodeFlow() {
     scope: SCOPES.join(' '),
     code_challenge_method: 'S256',
     code_challenge: challenge,
+    show_dialog: true,
     state,
   })
 
