@@ -27,8 +27,15 @@ export async function getSpotifyUser(authHeader) {
   })
 
   if (!res.ok) {
-    console.error('[getSpotifyUser] /v1/me returned', res.status)
-    return { userId: null, status: res.status }
+    const retryAfter = res.status === 429
+      ? parseInt(res.headers.get('Retry-After') ?? '5', 10)
+      : null
+    if (retryAfter != null) {
+      console.error(`[getSpotifyUser] /v1/me rate limited — Retry-After: ${retryAfter}s`)
+    } else {
+      console.error('[getSpotifyUser] /v1/me returned', res.status)
+    }
+    return { userId: null, status: res.status, retryAfter }
   }
   const data = await res.json()
   const userId = data.id ?? null

@@ -1,4 +1,4 @@
-async function apiFetch(path, accessToken, options = {}) {
+async function apiFetch(path, accessToken, options = {}, retried = false) {
   const res = await fetch(path, {
     ...options,
     headers: {
@@ -7,6 +7,12 @@ async function apiFetch(path, accessToken, options = {}) {
       ...options.headers,
     },
   })
+  if (res.status === 429 && !retried) {
+    const retryAfter = parseInt(res.headers.get('Retry-After') ?? '5', 10)
+    console.warn(`[apiClient] 429 on ${path} — retrying in ${retryAfter}s`)
+    await new Promise(r => setTimeout(r, retryAfter * 1000))
+    return apiFetch(path, accessToken, options, true)
+  }
   if (!res.ok) throw new Error(`API error ${res.status}: ${path}`)
   if (res.status === 204) return null
   return res.json()
