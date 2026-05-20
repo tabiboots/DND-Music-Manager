@@ -13,7 +13,7 @@ export default function TagChip({ tag, state = "idle", size = "md", showCount = 
 
     const insetShadow = isActive ? "shadow-amber-sm" : isSelected ? "shadow-amber-sm/40" : ""
 
-    const hue = typeof tag === 'object' ? tag.hue : 30
+    const hue = typeof tag === 'object' ? (tag.hue ?? 30) : 30
     const dotColor = isNew ? "rgb(108 107 105 / 0.45)"
         : isActive ? `hsl(${hue}, 80%, 60%)`
         : isSelected ? `hsl(${hue}, 60%, 60%)`
