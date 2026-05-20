@@ -26,3 +26,5 @@ lesson-1.md
 *.njsproj
 *.sln
 *.sw?
+
+.vercel

@@ -18,10 +18,15 @@ async function handleLogin() {
 export default function App() {
   const { tokens, error, handleReset } = useSpotifyAuth()
   const loadUserData = useStore(s => s.loadUserData)
+  const userDataLoading = useStore(s => s.userDataLoading)
 
   useEffect(() => {
     if (tokens) loadUserData(tokens.access_token)
   }, [tokens])
+
+  if (tokens && userDataLoading) {
+    return <div className="h-screen bg-dusk-900 flex items-center justify-center text-dusk-dim text-sm">Loading...</div>
+  }
 
   if (tokens) {
     return <MainLayout />

@@ -5,11 +5,11 @@ import { fetchUserData } from '../lib/apiClient.js'
 export const useStore = create((set, get) => ({
 
     // ── Entities ──────────────────────────────────────────────────
-    tags:      TAGS,
-    tracks:    TRACKS,
-    playlists: PLAYLISTS,
-    presets:   PRESETS,
-    tagMap:    TAG_MAP,  // { [trackId]: string[] } — user data, keyed by track ID
+    tags:      [],       // loaded from API
+    tracks:    TRACKS,   // TODO: replace with real Spotify tracks
+    playlists: PLAYLISTS, // TODO: replace with real Spotify playlists
+    presets:   [],       // loaded from API
+    tagMap:    {},       // loaded from API — { [trackId]: string[] }
 
     // ── User data loading ─────────────────────────────────────────
     userDataLoading: false,
