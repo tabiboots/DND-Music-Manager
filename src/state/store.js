@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { TRACKS, PLAYLISTS } from '../data/mocks.js'
-import { fetchUserData, saveTrackTags, saveTag } from '../lib/apiClient.js'
+import { fetchUserData, saveTrackTags, saveTag, savePreset } from '../lib/apiClient.js'
 
 export const useStore = create((set, get) => ({
 
@@ -113,6 +113,23 @@ export const useStore = create((set, get) => ({
         }
     },
 
+    loadPreset: (preset) => set(s => ({
+        deck: { ...s.deck, selectedTagIds: [...preset.tagIds], matchMode: preset.matchMode },
+    })),
+
+    saveCurrentAsPreset: async (label) => {
+        const { deck, accessToken } = get()
+        const id = crypto.randomUUID()
+        const normalized = { id, label, tagIds: deck.selectedTagIds, matchMode: deck.matchMode, lastUsedAt: null }
+        set(s => ({ presets: [...s.presets, normalized] }))
+        try {
+            await savePreset(accessToken, { id, label, tag_ids: deck.selectedTagIds, match_mode: deck.matchMode })
+        } catch (e) {
+            set(s => ({ presets: s.presets.filter(p => p.id !== id) }))
+            console.error('Failed to save preset:', e)
+        }
+    },
+
     setActivePlaylist: (id) => set({ activePlaylistId: id }),
 
     clearDeck: () => set((s) => ({
@@ -158,6 +175,14 @@ export function matchedTrackIds(s) {
 
 export function matchCount(s) {
     return matchedTrackIds(s).length
+}
+
+export function tagCountMap(s) {
+    const counts = {}
+    Object.values(s.tagMap).forEach(tagIds => {
+        tagIds.forEach(id => { counts[id] = (counts[id] ?? 0) + 1 })
+    })
+    return counts
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────

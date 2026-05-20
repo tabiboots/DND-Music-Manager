@@ -2,6 +2,7 @@ import { useStore } from '../../state/store.js'
 import Sidebar from './Sidebar.jsx'
 import TrackList from './TrackList.jsx'
 import TagEditor from './TagEditor.jsx'
+import Deck from './Deck.jsx'
 
 export default function MainLayout() {
   const selectedTrackId = useStore(s => s.selectedTrackId)
@@ -14,11 +15,7 @@ export default function MainLayout() {
           <TrackList />
         </main>
         <aside className="w-72 shrink-0 border-l border-line">
-          {selectedTrackId ? <TagEditor /> : (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-dusk-dim text-sm">Deck coming soon</p>
-            </div>
-          )}
+          {selectedTrackId ? <TagEditor /> : <Deck />}
         </aside>
       </div>
       <footer className="h-16 border-t border-line flex items-center px-6">
