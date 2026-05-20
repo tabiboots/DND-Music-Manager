@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { TRACKS, PLAYLISTS } from '../data/mocks.js'
-import { fetchUserData, saveTrackTags, saveTag, savePreset } from '../lib/apiClient.js'
+import { fetchUserData, saveTrackTags, saveTag, savePreset, deletePreset } from '../lib/apiClient.js'
 
 export const useStore = create((set, get) => ({
 
@@ -116,6 +116,17 @@ export const useStore = create((set, get) => ({
     loadPreset: (preset) => set(s => ({
         deck: { ...s.deck, selectedTagIds: [...preset.tagIds], matchMode: preset.matchMode },
     })),
+
+    removePreset: async (id) => {
+        const removed = get().presets.find(p => p.id === id)
+        set(s => ({ presets: s.presets.filter(p => p.id !== id) }))
+        try {
+            await deletePreset(get().accessToken, id)
+        } catch (e) {
+            set(s => ({ presets: [...s.presets, removed] }))
+            console.error('Failed to delete preset:', e)
+        }
+    },
 
     saveCurrentAsPreset: async (label) => {
         const { deck, accessToken } = get()

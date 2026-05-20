@@ -114,6 +114,7 @@ function PresetsTab() {
   const selectedTagIds     = useStore(s => s.deck.selectedTagIds)
   const loadPreset         = useStore(s => s.loadPreset)
   const saveCurrentAsPreset = useStore(s => s.saveCurrentAsPreset)
+  const removePreset       = useStore(s => s.removePreset)
 
   const handleSave = async (e) => {
     e.preventDefault()
@@ -132,16 +133,23 @@ function PresetsTab() {
           <p className="text-dusk-dim text-sm text-center pt-8">No presets saved yet</p>
         )}
         {presets.map(preset => (
-          <button
+          <div
             key={preset.id}
-            onClick={() => loadPreset(preset)}
-            className="text-left w-full px-3 py-2.5 rounded-lg border border-line hover:border-line-hi hover:bg-dusk-800 transition-colors"
+            className="group flex items-center gap-2 px-3 py-2.5 rounded-lg border border-line hover:border-line-hi hover:bg-dusk-800 transition-colors"
           >
-            <p className="text-sm text-dusk-fg font-medium">{preset.label}</p>
-            <p className="text-xs text-dusk-dim mt-0.5">
-              {preset.tagIds.join(', ')} · {preset.matchMode}
-            </p>
-          </button>
+            <button className="flex-1 text-left min-w-0" onClick={() => loadPreset(preset)}>
+              <p className="text-sm text-dusk-fg font-medium">{preset.label}</p>
+              <p className="text-xs text-dusk-dim mt-0.5 truncate">
+                {preset.tagIds.join(', ')} · {preset.matchMode}
+              </p>
+            </button>
+            <button
+              onClick={() => removePreset(preset.id)}
+              className="opacity-0 group-hover:opacity-100 text-dusk-dim hover:text-dusk-danger transition-all shrink-0 text-lg leading-none"
+            >
+              ×
+            </button>
+          </div>
         ))}
       </div>
 
