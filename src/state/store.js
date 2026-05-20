@@ -1,4 +1,6 @@
 import { create } from 'zustand'
+
+let loadUserDataInflight = null
 import { fetchUserData, saveTrackTags, saveTag, savePreset, deletePreset } from '../lib/apiClient.js'
 import { fetchPlaylists, fetchPlaylistTracks, fetchLikedSongs, normalizeTrack, normalizePlaylist } from '../lib/spotifyApi.js'
 
@@ -57,8 +59,9 @@ export const useStore = create((set, get) => ({
     },
 
     loadUserData: async (accessToken) => {
+        if (loadUserDataInflight) return loadUserDataInflight
         set({ userDataLoading: true })
-        try {
+        loadUserDataInflight = (async () => { try {
             const { userId, tags, trackTags, presets } = await fetchUserData(accessToken)
             const rawPlaylists = await fetchPlaylists(accessToken, userId)
 
@@ -82,7 +85,9 @@ export const useStore = create((set, get) => ({
             console.error('Failed to load user data:', e)
         } finally {
             set({ userDataLoading: false })
-        }
+            loadUserDataInflight = null
+        }})()
+        return loadUserDataInflight
     },
 
     loadPlaylistTracks: async (playlistId) => {

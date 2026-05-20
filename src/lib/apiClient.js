@@ -1,4 +1,4 @@
-async function apiFetch(path, accessToken, options = {}) {
+async function apiFetch(path, accessToken, options = {}, attempt = 0) {
   const res = await fetch(path, {
     ...options,
     headers: {
@@ -7,6 +7,11 @@ async function apiFetch(path, accessToken, options = {}) {
       ...options.headers,
     },
   })
+  if (res.status === 429 && attempt < 3) {
+    const delay = Math.pow(2, attempt) * 2000  // 2s, 4s, 8s
+    await new Promise(r => setTimeout(r, delay))
+    return apiFetch(path, accessToken, options, attempt + 1)
+  }
   if (!res.ok) throw new Error(`API error ${res.status}: ${path}`)
   if (res.status === 204) return null
   return res.json()
