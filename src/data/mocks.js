@@ -14,17 +14,30 @@ export const TAGS = [
 ]
 
 export const TRACKS = [
-    { id: 't01', title: 'Heralds at the Gate',  artist: 'Cantorum',          hue: 8,   dur: '5:21', tagIds: ['combat', 'boss'] },
-    { id: 't02', title: 'The Hanged Man',       artist: 'Aurora Sound',      hue: 280, dur: '4:12', tagIds: ['dread', 'ritual'] },
-    { id: 't03', title: 'Embergrove',           artist: 'Forlane',           hue: 32,  dur: '3:48', tagIds: ['tavern'] },
-    { id: 't04', title: 'Long Road West',       artist: 'Vellichor Quartet', hue: 145, dur: '6:02', tagIds: ['travel'] },
-    { id: 't05', title: 'Dust of Old Kingdoms', artist: 'Maren K.',          hue: 50,  dur: '5:33', tagIds: ['mystery', 'exploration'] },
-    { id: 't06', title: 'The Crown Beneath',    artist: 'Lyrebird',          hue: 300, dur: '4:48', tagIds: ['ritual', 'dread'] },
-    { id: 't07', title: 'Marketday',            artist: 'Saltspire',         hue: 50,  dur: '2:59', tagIds: ['tavern', 'city'] },
-    { id: 't08', title: 'Stormbreak',           artist: 'Caelum',            hue: 0,   dur: '5:55', tagIds: ['combat'] },
-    { id: 't09', title: 'Hours Til Dawn',       artist: 'Quietfall',         hue: 180, dur: '4:21', tagIds: ['downtime', 'exploration'] },
-    { id: 't10', title: 'Final Hour',           artist: 'Pyralis',           hue: 350, dur: '6:33', tagIds: ['boss', 'final'] },
+    { id: 't01', title: 'Heralds at the Gate',  artist: 'Cantorum',          hue: 8,   dur: '5:21' },
+    { id: 't02', title: 'The Hanged Man',       artist: 'Aurora Sound',      hue: 280, dur: '4:12' },
+    { id: 't03', title: 'Embergrove',           artist: 'Forlane',           hue: 32,  dur: '3:48' },
+    { id: 't04', title: 'Long Road West',       artist: 'Vellichor Quartet', hue: 145, dur: '6:02' },
+    { id: 't05', title: 'Dust of Old Kingdoms', artist: 'Maren K.',          hue: 50,  dur: '5:33' },
+    { id: 't06', title: 'The Crown Beneath',    artist: 'Lyrebird',          hue: 300, dur: '4:48' },
+    { id: 't07', title: 'Marketday',            artist: 'Saltspire',         hue: 50,  dur: '2:59' },
+    { id: 't08', title: 'Stormbreak',           artist: 'Caelum',            hue: 0,   dur: '5:55' },
+    { id: 't09', title: 'Hours Til Dawn',       artist: 'Quietfall',         hue: 180, dur: '4:21' },
+    { id: 't10', title: 'Final Hour',           artist: 'Pyralis',           hue: 350, dur: '6:33' },
 ]
+
+export const TAG_MAP = {
+    't01': ['combat', 'boss'],
+    't02': ['dread', 'ritual'],
+    't03': ['tavern'],
+    't04': ['travel'],
+    't05': ['mystery', 'exploration'],
+    't06': ['ritual', 'dread'],
+    't07': ['tavern', 'city'],
+    't08': ['combat'],
+    't09': ['downtime', 'exploration'],
+    't10': ['boss', 'final'],
+}
 
 export const PLAYLISTS = [
     { id: 'liked', label: 'Liked Songs',       trackIds: ['t01','t02','t03','t04','t05','t06','t07','t08','t09','t10'], pinned: true },

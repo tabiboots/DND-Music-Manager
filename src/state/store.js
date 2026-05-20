@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { TAGS, TRACKS, PLAYLISTS, PRESETS } from '../data/mocks.js'
+import { TAGS, TRACKS, PLAYLISTS, PRESETS, TAG_MAP } from '../data/mocks.js'
+import { fetchUserData } from '../lib/apiClient.js'
 
 export const useStore = create((set, get) => ({
 
@@ -8,6 +9,10 @@ export const useStore = create((set, get) => ({
     tracks:    TRACKS,
     playlists: PLAYLISTS,
     presets:   PRESETS,
+    tagMap:    TAG_MAP,  // { [trackId]: string[] } — user data, keyed by track ID
+
+    // ── User data loading ─────────────────────────────────────────
+    userDataLoading: false,
 
     // ── UI: active playlist ───────────────────────────────────────
     activePlaylistId: 'liked',
@@ -54,6 +59,21 @@ export const useStore = create((set, get) => ({
         deck: { ...s.deck, shuffle: !s.deck.shuffle }
     })),
 
+    loadUserData: async (accessToken) => {
+        set({ userDataLoading: true })
+        try {
+            const { tags, trackTags, presets } = await fetchUserData(accessToken)
+            const tagMap = Object.fromEntries(
+                trackTags.map(({ track_id, tag_ids }) => [track_id, tag_ids])
+            )
+            set({ tags, tagMap, presets })
+        } catch (e) {
+            console.error('Failed to load user data:', e)
+        } finally {
+            set({ userDataLoading: false })
+        }
+    },
+
     setActivePlaylist: (id) => set({ activePlaylistId: id }),
 
     clearDeck: () => set((s) => ({
@@ -88,10 +108,12 @@ export function matchedTrackIds(s) {
     const { selectedTagIds: sel, matchMode } = s.deck
     if (!sel.length) return []
     return s.tracks
-        .filter(t => matchMode === 'all'
-            ? sel.every(id => t.tagIds.includes(id))
-            : sel.some(id => t.tagIds.includes(id))
-        )
+        .filter(t => {
+            const tags = s.tagMap[t.id] ?? []
+            return matchMode === 'all'
+                ? sel.every(id => tags.includes(id))
+                : sel.some(id => tags.includes(id))
+        })
         .map(t => t.id)
 }
 

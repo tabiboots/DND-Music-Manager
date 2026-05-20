@@ -6,6 +6,7 @@ export default function TrackList() {
   const tracks = useStore(useShallow(visibleTracks))
   const playlist = useStore(s => s.playlists.find(p => p.id === s.activePlaylistId))
   const allTags = useStore(s => s.tags)
+  const tagMap = useStore(s => s.tagMap)
 
   return (
     <div className="flex flex-col gap-1">
@@ -25,7 +26,7 @@ export default function TrackList() {
             <p className="text-xs text-dusk-mute truncate">{track.artist}</p>
           </div>
           <div className="flex gap-1.5 flex-wrap justify-end max-w-40">
-            {track.tagIds.map(id => {
+            {(tagMap[track.id] ?? []).map(id => {
               const tag = allTags.find(t => t.id === id)
               return tag ? <TagChip key={id} tag={tag} size="xs" showCount={false} /> : null
             })}
