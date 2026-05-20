@@ -9,6 +9,7 @@ export const API_BASE = 'https://api.spotify.com/v1'
 export const SCOPES = [
   'user-read-email',
   'user-read-private',
+  'user-library-read',
   'streaming',
   'playlist-read-private',
   'playlist-read-collaborative',
