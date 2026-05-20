@@ -4,8 +4,81 @@ import TagChip from './TagChip.jsx'
 
 const FAMILIES = ['encounter', 'mood', 'scene']
 
+const BLANK_FORM = { label: '', hue: 30, family: 'mood' }
+
+function NewTagForm({ onClose }) {
+  const [form, setForm] = useState(BLANK_FORM)
+  const createTag = useStore(s => s.createTag)
+
+  const submit = async (e) => {
+    e.preventDefault()
+    if (!form.label.trim()) return
+    await createTag(form)
+    onClose()
+  }
+
+  return (
+    <form onSubmit={submit} className="border-t border-line p-4 flex flex-col gap-3 shrink-0 bg-dusk-900">
+
+      {/* Label */}
+      <input
+        autoFocus
+        type="text"
+        placeholder="Tag name…"
+        value={form.label}
+        onChange={e => setForm(f => ({ ...f, label: e.target.value }))}
+        className="w-full bg-dusk-800 border border-line rounded-lg px-3 py-1.5 text-sm text-dusk-fg placeholder:text-dusk-dim outline-none focus:border-line-hi transition-colors"
+      />
+
+      {/* Hue */}
+      <div className="flex items-center gap-3">
+        <span
+          className="h-3 w-3 rounded-full shrink-0"
+          style={{ background: `hsl(${form.hue}, 65%, 55%)` }}
+        />
+        <input
+          type="range" min="0" max="359" value={form.hue}
+          onChange={e => setForm(f => ({ ...f, hue: Number(e.target.value) }))}
+          className="flex-1 accent-amber h-1"
+        />
+      </div>
+
+      {/* Family */}
+      <div className="flex gap-1.5">
+        {FAMILIES.map(f => (
+          <button
+            key={f} type="button"
+            onClick={() => setForm(form => ({ ...form, family: f }))}
+            className={`flex-1 text-xs py-1.5 rounded-lg border transition-colors capitalize
+              ${form.family === f
+                ? 'border-amber text-amber bg-amber/10'
+                : 'border-line text-dusk-mute hover:text-dusk-fg hover:border-line-hi'
+              }`}
+          >
+            {f}
+          </button>
+        ))}
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-2">
+        <button type="button" onClick={onClose}
+          className="flex-1 text-xs py-1.5 rounded-lg border border-line text-dusk-mute hover:text-dusk-fg transition-colors">
+          Cancel
+        </button>
+        <button type="submit"
+          className="flex-1 text-xs py-1.5 rounded-lg bg-amber text-dusk-900 font-semibold hover:opacity-90 transition-opacity">
+          Create
+        </button>
+      </div>
+
+    </form>
+  )
+}
+
 export default function TagEditor() {
   const [filter, setFilter] = useState('')
+  const [showForm, setShowForm] = useState(false)
 
   const selectedTrackId = useStore(s => s.selectedTrackId)
   const tracks          = useStore(s => s.tracks)
@@ -93,6 +166,21 @@ export default function TagEditor() {
           </div>
         ))}
       </div>
+
+      {/* New tag */}
+      {showForm
+        ? <NewTagForm onClose={() => setShowForm(false)} />
+        : (
+          <div className="border-t border-line p-4 shrink-0">
+            <button
+              onClick={() => setShowForm(true)}
+              className="w-full text-xs py-1.5 rounded-lg border border-dashed border-line-hi text-dusk-dim hover:text-dusk-fg hover:border-line-hi transition-colors"
+            >
+              + New tag
+            </button>
+          </div>
+        )
+      }
 
     </div>
   )

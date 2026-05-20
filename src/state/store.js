@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { TRACKS, PLAYLISTS } from '../data/mocks.js'
-import { fetchUserData, saveTrackTags } from '../lib/apiClient.js'
+import { fetchUserData, saveTrackTags, saveTag } from '../lib/apiClient.js'
 
 export const useStore = create((set, get) => ({
 
@@ -68,6 +68,19 @@ export const useStore = create((set, get) => ({
     setSelectedTrack: (id) => set(s => ({
         selectedTrackId: s.selectedTrackId === id ? null : id,
     })),
+
+    createTag: async ({ label, hue, family }) => {
+        const id = label.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+        if (!id) return
+        const tag = { id, label: label.trim(), hue, family }
+        set(s => ({ tags: [...s.tags, tag] }))
+        try {
+            await saveTag(get().accessToken, tag)
+        } catch (e) {
+            set(s => ({ tags: s.tags.filter(t => t.id !== id) }))
+            console.error('Failed to create tag:', e)
+        }
+    },
 
     setTagForTrack: async (trackId, tagIds) => {
         set(s => ({ tagMap: { ...s.tagMap, [trackId]: tagIds } }))
