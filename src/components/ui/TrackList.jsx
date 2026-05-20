@@ -9,6 +9,13 @@ export default function TrackList() {
   const tagMap = useStore(s => s.tagMap)
   const selectedTrackId = useStore(s => s.selectedTrackId)
   const setSelectedTrack = useStore(s => s.setSelectedTrack)
+  const playlistLoading = useStore(s => s.playlistLoading)
+
+  if (playlistLoading) return (
+    <div className="flex items-center justify-center h-48">
+      <span className="h-5 w-5 rounded-full border-2 border-dusk-dim border-t-dusk-fg animate-spin" />
+    </div>
+  )
 
   return (
     <div className="flex flex-col gap-1">

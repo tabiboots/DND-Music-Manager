@@ -1,19 +1,22 @@
 import { create } from 'zustand'
-import { TRACKS, PLAYLISTS } from '../data/mocks.js'
 import { fetchUserData, saveTrackTags, saveTag, savePreset, deletePreset } from '../lib/apiClient.js'
+import { fetchPlaylists, fetchPlaylistTracks, fetchLikedSongs, normalizeTrack, normalizePlaylist } from '../lib/spotifyApi.js'
+
+const LIKED_PLAYLIST = { id: 'liked', label: 'Liked Songs', trackIds: [], loaded: false, total: null, pinned: true }
 
 export const useStore = create((set, get) => ({
 
     // ── Entities ──────────────────────────────────────────────────
-    tags:      [],       // loaded from API
-    tracks:    TRACKS,   // TODO: replace with real Spotify tracks
-    playlists: PLAYLISTS, // TODO: replace with real Spotify playlists
-    presets:   [],       // loaded from API
-    tagMap:    {},       // loaded from API — { [trackId]: string[] }
+    tags:      [],   // loaded from API
+    tracks:    {},   // { [spotifyId]: track } — loaded lazily per playlist
+    playlists: [],   // loaded from Spotify on login
+    presets:   [],   // loaded from API
+    tagMap:    {},   // loaded from API — { [trackId]: string[] }
 
     // ── Session ───────────────────────────────────────────────────
-    accessToken: null,
-    userDataLoading: true,
+    accessToken:        null,
+    userDataLoading:    true,
+    playlistLoading:    false,
 
     // ── UI: active playlist ───────────────────────────────────────
     activePlaylistId: 'liked',
@@ -24,9 +27,9 @@ export const useStore = create((set, get) => ({
     // ── UI: deck ─────────────────────────────────────────────────
     deck: {
         selectedTagIds: [],
-        matchMode: 'any',      // 'any' | 'all'
+        matchMode: 'any',
         shuffle: false,
-        activeTab: 'build',    // 'build' | 'presets'
+        activeTab: 'build',
     },
 
     // ── UI: playback ──────────────────────────────────────────────
@@ -38,6 +41,79 @@ export const useStore = create((set, get) => ({
     },
 
     // ── Actions ───────────────────────────────────────────────────
+
+    setAccessToken: (token) => set({ accessToken: token }),
+
+    setSelectedTrack: (id) => set(s => ({
+        selectedTrackId: s.selectedTrackId === id ? null : id,
+    })),
+
+    setActivePlaylist: (id) => {
+        set({ activePlaylistId: id })
+        const playlist = get().playlists.find(p => p.id === id)
+        if (playlist && !playlist.loaded) {
+            get().loadPlaylistTracks(id)
+        }
+    },
+
+    loadUserData: async (accessToken) => {
+        set({ userDataLoading: true })
+        try {
+            const [{ tags, trackTags, presets }, rawPlaylists] = await Promise.all([
+                fetchUserData(accessToken),
+                fetchPlaylists(accessToken),
+            ])
+
+            const tagMap = Object.fromEntries(
+                trackTags.map(({ track_id, tag_ids }) => [track_id, tag_ids])
+            )
+            const normalizedPresets = presets.map(p => ({
+                id:         p.id,
+                label:      p.label,
+                tagIds:     p.tag_ids,
+                matchMode:  p.match_mode,
+                lastUsedAt: p.last_used_at,
+            }))
+            const playlists = [LIKED_PLAYLIST, ...rawPlaylists.map(normalizePlaylist)]
+
+            set({ tags, tagMap, presets: normalizedPresets, playlists })
+
+            // Load the default playlist immediately
+            await get().loadPlaylistTracks('liked')
+        } catch (e) {
+            console.error('Failed to load user data:', e)
+        } finally {
+            set({ userDataLoading: false })
+        }
+    },
+
+    loadPlaylistTracks: async (playlistId) => {
+        const { playlists, accessToken } = get()
+        const playlist = playlists.find(p => p.id === playlistId)
+        if (!playlist || playlist.loaded) return
+
+        set({ playlistLoading: true })
+        try {
+            const rawItems = playlistId === 'liked'
+                ? await fetchLikedSongs(accessToken)
+                : await fetchPlaylistTracks(accessToken, playlistId)
+
+            const normalized = rawItems.map(normalizeTrack).filter(Boolean)
+            const newTracks  = Object.fromEntries(normalized.map(t => [t.id, t]))
+            const trackIds   = normalized.map(t => t.id)
+
+            set(s => ({
+                tracks: { ...s.tracks, ...newTracks },
+                playlists: s.playlists.map(p =>
+                    p.id === playlistId ? { ...p, trackIds, loaded: true } : p
+                ),
+            }))
+        } catch (e) {
+            console.error(`Failed to load tracks for ${playlistId}:`, e)
+        } finally {
+            set({ playlistLoading: false })
+        }
+    },
 
     toggleTag: (tagId) => set((s) => {
         const sel = s.deck.selectedTagIds
@@ -63,11 +139,23 @@ export const useStore = create((set, get) => ({
         deck: { ...s.deck, shuffle: !s.deck.shuffle }
     })),
 
-    setAccessToken: (token) => set({ accessToken: token }),
-
-    setSelectedTrack: (id) => set(s => ({
-        selectedTrackId: s.selectedTrackId === id ? null : id,
+    clearDeck: () => set((s) => ({
+        deck: { ...s.deck, selectedTagIds: [] }
     })),
+
+    deployDeck: () => set((s) => {
+        const matched = matchedTrackIds(s)
+        if (!matched.length) return {}
+        const ordered = s.deck.shuffle ? shuffle(matched) : matched
+        return {
+            playback: {
+                currentTrackId: ordered[0],
+                isPlaying: true,
+                queue: ordered,
+                queueSource: { kind: 'deck', tagIds: [...s.deck.selectedTagIds], matchMode: s.deck.matchMode },
+            }
+        }
+    }),
 
     createTag: async ({ label, hue, family }) => {
         const id = label.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
@@ -91,42 +179,9 @@ export const useStore = create((set, get) => ({
         }
     },
 
-    loadUserData: async (accessToken) => {
-        set({ userDataLoading: true })
-        try {
-            const { tags, trackTags, presets } = await fetchUserData(accessToken)
-            const tagMap = Object.fromEntries(
-                trackTags.map(({ track_id, tag_ids }) => [track_id, tag_ids])
-            )
-            const normalizedPresets = presets.map(p => ({
-                id:         p.id,
-                label:      p.label,
-                tagIds:     p.tag_ids,
-                matchMode:  p.match_mode,
-                lastUsedAt: p.last_used_at,
-            }))
-            set({ tags, tagMap, presets: normalizedPresets })
-        } catch (e) {
-            console.error('Failed to load user data:', e)
-        } finally {
-            set({ userDataLoading: false })
-        }
-    },
-
     loadPreset: (preset) => set(s => ({
         deck: { ...s.deck, selectedTagIds: [...preset.tagIds], matchMode: preset.matchMode },
     })),
-
-    removePreset: async (id) => {
-        const removed = get().presets.find(p => p.id === id)
-        set(s => ({ presets: s.presets.filter(p => p.id !== id) }))
-        try {
-            await deletePreset(get().accessToken, id)
-        } catch (e) {
-            set(s => ({ presets: [...s.presets, removed] }))
-            console.error('Failed to delete preset:', e)
-        }
-    },
 
     saveCurrentAsPreset: async (label) => {
         const { deck, accessToken } = get()
@@ -141,47 +196,36 @@ export const useStore = create((set, get) => ({
         }
     },
 
-    setActivePlaylist: (id) => set({ activePlaylistId: id }),
-
-    clearDeck: () => set((s) => ({
-        deck: { ...s.deck, selectedTagIds: [] }
-    })),
-
-    deployDeck: () => set((s) => {
-        const matched = matchedTrackIds(s)
-        if (!matched.length) return {}
-        const ordered = s.deck.shuffle ? shuffle(matched) : matched
-        return {
-            playback: {
-                currentTrackId: ordered[0],
-                isPlaying: true,
-                queue: ordered,
-                queueSource: { kind: 'deck', tagIds: [...s.deck.selectedTagIds], matchMode: s.deck.matchMode },
-            }
+    removePreset: async (id) => {
+        const removed = get().presets.find(p => p.id === id)
+        set(s => ({ presets: s.presets.filter(p => p.id !== id) }))
+        try {
+            await deletePreset(get().accessToken, id)
+        } catch (e) {
+            set(s => ({ presets: [...s.presets, removed] }))
+            console.error('Failed to delete preset:', e)
         }
-    }),
+    },
 
 }))
 
-// ── Selectors (pure functions, call with the full state) ──────────────────
+// ── Selectors ─────────────────────────────────────────────────────────────
 
 export function visibleTracks(s) {
     const playlist = s.playlists.find(p => p.id === s.activePlaylistId)
     if (!playlist) return []
-    return playlist.trackIds.map(id => s.tracks.find(t => t.id === id)).filter(Boolean)
+    return playlist.trackIds.map(id => s.tracks[id]).filter(Boolean)
 }
 
 export function matchedTrackIds(s) {
     const { selectedTagIds: sel, matchMode } = s.deck
     if (!sel.length) return []
-    return s.tracks
-        .filter(t => {
-            const tags = s.tagMap[t.id] ?? []
-            return matchMode === 'all'
-                ? sel.every(id => tags.includes(id))
-                : sel.some(id => tags.includes(id))
-        })
-        .map(t => t.id)
+    return Object.keys(s.tagMap).filter(trackId => {
+        const tags = s.tagMap[trackId] ?? []
+        return matchMode === 'all'
+            ? sel.every(id => tags.includes(id))
+            : sel.some(id => tags.includes(id))
+    })
 }
 
 export function matchCount(s) {
