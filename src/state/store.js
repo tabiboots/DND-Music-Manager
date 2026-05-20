@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { fetchUserData, saveTrackTags, saveTag, savePreset, deletePreset } from '../lib/apiClient.js'
-import { fetchPlaylists, fetchPlaylistTracks, fetchLikedSongs, normalizeTrack, normalizePlaylist } from '../lib/spotifyApi.js'
+import { fetchUserProfile, fetchPlaylists, fetchPlaylistTracks, fetchLikedSongs, normalizeTrack, normalizePlaylist } from '../lib/spotifyApi.js'
 
 const LIKED_PLAYLIST = { id: 'liked', label: 'Liked Songs', trackIds: [], loaded: false, total: null, pinned: true }
 
@@ -59,10 +59,11 @@ export const useStore = create((set, get) => ({
     loadUserData: async (accessToken) => {
         set({ userDataLoading: true })
         try {
-            const [{ tags, trackTags, presets }, rawPlaylists] = await Promise.all([
+            const [{ tags, trackTags, presets }, profile] = await Promise.all([
                 fetchUserData(accessToken),
-                fetchPlaylists(accessToken),
+                fetchUserProfile(accessToken),
             ])
+            const rawPlaylists = await fetchPlaylists(accessToken, profile.id)
 
             const tagMap = Object.fromEntries(
                 trackTags.map(({ track_id, tag_ids }) => [track_id, tag_ids])

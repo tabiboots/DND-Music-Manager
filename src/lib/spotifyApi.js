@@ -52,12 +52,16 @@ export function normalizePlaylist(p) {
 
 // ── Fetchers ──────────────────────────────────────────────────────────────
 
-export async function fetchPlaylists(accessToken) {
+export async function fetchUserProfile(accessToken) {
+  return spotifyFetch('https://api.spotify.com/v1/me', accessToken)
+}
+
+export async function fetchPlaylists(accessToken, userId) {
   const results = []
   let url = 'https://api.spotify.com/v1/me/playlists?limit=50'
   while (url) {
     const data = await spotifyFetch(url, accessToken)
-    results.push(...data.items.filter(Boolean))
+    results.push(...data.items.filter(p => p && p.owner?.id === userId))
     url = data.next
   }
   return results
@@ -65,7 +69,7 @@ export async function fetchPlaylists(accessToken) {
 
 export async function fetchPlaylistTracks(accessToken, playlistId) {
   const results = []
-  let url = `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=100`
+  let url = `https://api.spotify.com/v1/playlists/${playlistId}/items?limit=100`
   while (url) {
     const data = await spotifyFetch(url, accessToken)
     results.push(...data.items.filter(item => item.track?.id))
