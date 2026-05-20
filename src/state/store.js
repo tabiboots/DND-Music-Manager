@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { getValidTokens } from '../components/spotify/client.js'
 
 let loadUserDataInflight = null
 import { fetchUserData, saveTrackTags, saveTag, savePreset, deletePreset } from '../lib/apiClient.js'
@@ -46,6 +47,15 @@ export const useStore = create((set, get) => ({
 
     setAccessToken: (token) => set({ accessToken: token }),
 
+    getAccessToken: async () => {
+      const tokens = await getValidTokens()
+      if (!tokens) return null
+      if (tokens.access_token !== get().accessToken) {
+        set({ accessToken: tokens.access_token })
+      }
+      return tokens.access_token
+    },
+
     setSelectedTrack: (id) => set(s => ({
         selectedTrackId: s.selectedTrackId === id ? null : id,
     })),
@@ -58,10 +68,11 @@ export const useStore = create((set, get) => ({
         }
     },
 
-    loadUserData: async (accessToken) => {
+    loadUserData: async () => {
         if (loadUserDataInflight) return loadUserDataInflight
         set({ userDataLoading: true })
         loadUserDataInflight = (async () => { try {
+            const accessToken = await get().getAccessToken()
             const { userId, tags, trackTags, presets } = await fetchUserData(accessToken)
             const rawPlaylists = await fetchPlaylists(accessToken, userId)
 
@@ -91,12 +102,12 @@ export const useStore = create((set, get) => ({
     },
 
     loadPlaylistTracks: async (playlistId) => {
-        const { playlists, accessToken } = get()
-        const playlist = playlists.find(p => p.id === playlistId)
+        const playlist = get().playlists.find(p => p.id === playlistId)
         if (!playlist || playlist.loaded) return
 
         set({ playlistLoading: true })
         try {
+            const accessToken = await get().getAccessToken()
             let rawItems, nextUrl = null, total = null
             if (playlistId === 'liked') {
                 const result = await fetchLikedSongs(accessToken)
@@ -127,12 +138,12 @@ export const useStore = create((set, get) => ({
     },
 
     loadMoreLikedSongs: async () => {
-        const { playlists, accessToken } = get()
-        const liked = playlists.find(p => p.id === 'liked')
+        const liked = get().playlists.find(p => p.id === 'liked')
         if (!liked?.nextUrl) return
 
         set({ playlistLoading: true })
         try {
+            const accessToken = await get().getAccessToken()
             const nextUrlObj = new URL(liked.nextUrl)
             const offset = parseInt(nextUrlObj.searchParams.get('offset') ?? '0', 10)
             const result  = await fetchLikedSongs(accessToken, offset)
@@ -204,7 +215,8 @@ export const useStore = create((set, get) => ({
         const tag = { id, label: label.trim(), hue, family }
         set(s => ({ tags: [...s.tags, tag] }))
         try {
-            await saveTag(get().accessToken, tag)
+            const accessToken = await get().getAccessToken()
+            await saveTag(accessToken, tag)
         } catch (e) {
             set(s => ({ tags: s.tags.filter(t => t.id !== id) }))
             console.error('Failed to create tag:', e)
@@ -214,7 +226,8 @@ export const useStore = create((set, get) => ({
     setTagForTrack: async (trackId, tagIds) => {
         set(s => ({ tagMap: { ...s.tagMap, [trackId]: tagIds } }))
         try {
-            await saveTrackTags(get().accessToken, trackId, tagIds)
+            const accessToken = await get().getAccessToken()
+            await saveTrackTags(accessToken, trackId, tagIds)
         } catch (e) {
             console.error('Failed to save tags:', e)
         }
@@ -225,11 +238,12 @@ export const useStore = create((set, get) => ({
     })),
 
     saveCurrentAsPreset: async (label) => {
-        const { deck, accessToken } = get()
+        const { deck } = get()
         const id = crypto.randomUUID()
         const normalized = { id, label, tagIds: deck.selectedTagIds, matchMode: deck.matchMode, lastUsedAt: null }
         set(s => ({ presets: [...s.presets, normalized] }))
         try {
+            const accessToken = await get().getAccessToken()
             await savePreset(accessToken, { id, label, tag_ids: deck.selectedTagIds, match_mode: deck.matchMode })
         } catch (e) {
             set(s => ({ presets: s.presets.filter(p => p.id !== id) }))
@@ -241,7 +255,8 @@ export const useStore = create((set, get) => ({
         const removed = get().presets.find(p => p.id === id)
         set(s => ({ presets: s.presets.filter(p => p.id !== id) }))
         try {
-            await deletePreset(get().accessToken, id)
+            const accessToken = await get().getAccessToken()
+            await deletePreset(accessToken, id)
         } catch (e) {
             set(s => ({ presets: [...s.presets, removed] }))
             console.error('Failed to delete preset:', e)

@@ -24,7 +24,7 @@ export default function App() {
   useEffect(() => {
     if (tokens) {
       setAccessToken(tokens.access_token)
-      loadUserData(tokens.access_token)
+      loadUserData()
     }
   }, [tokens])
 
