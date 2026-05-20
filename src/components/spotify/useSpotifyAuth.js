@@ -12,7 +12,10 @@ import {
 } from './tokens.js'
 
 export function useSpotifyAuth() {
-    const [tokens, setTokens] = useState(null)
+    const [tokens, setTokens] = useState(() => {
+        const existing = loadTokens()
+        return existing && isAccessTokenValid(existing) ? existing : null
+    })
     const [error, setError] = useState(null)
 
     useEffect(() => {
@@ -43,14 +46,6 @@ export function useSpotifyAuth() {
                     sessionStorage.removeItem(STATE_KEY)
                 })
                 .catch((e) => setError(e.message))
-            return
-        }
-
-        const existing = loadTokens()
-        if (existing && isAccessTokenValid(existing)) {
-            setTokens(existing)
-        } else if (existing) {
-            clearTokens()
         }
     }, [])
 

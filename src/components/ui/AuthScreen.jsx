@@ -21,7 +21,7 @@ const tags = [
     { id: 14, label: '+ new tag', state: "new"},
 ]
 
-export default function AuthScreen() {
+export default function AuthScreen({ onLogin }) {
     return (
         <div className="grid grid-cols-2 h-screen bg-dusk-900">
             <div className="relative flex flex-col justify-between p-14
@@ -69,7 +69,7 @@ export default function AuthScreen() {
                         </li>
                     </ul>
                 </div>
-                <SpotifyLinkButton />
+                <SpotifyLinkButton onClick={onLogin} />
             </div>
         </div>
 

@@ -1,6 +1,6 @@
-export default function TagChip({ tag, state = "idle", size = "md", onClick }) {
-    const pad = size === "sm" ? "px-2.5 py-1" : size === "md" ? "px-3 py-1.5" : "px-4 py-2"
-    const font = size === "sm" ? "text-xs" : size === "md" ? "text-sm" : "text-base"
+export default function TagChip({ tag, state = "idle", size = "md", showCount = true, onClick }) {
+    const pad = size === "xs" ? "px-1.5 py-0.5" : size === "sm" ? "px-2.5 py-1" : size === "md" ? "px-3 py-1.5" : "px-4 py-2"
+    const font = size === "xs" ? "text-[10px]" : size === "sm" ? "text-xs" : size === "md" ? "text-sm" : "text-base"
 
     const isActive = state === "active";
     const isSelected = state === "selected";
@@ -13,8 +13,11 @@ export default function TagChip({ tag, state = "idle", size = "md", onClick }) {
 
     const insetShadow = isActive ? "shadow-amber-sm" : isSelected ? "shadow-amber-sm/40" : ""
 
-    const hue = 30
-    const dotColor = (state === "idle" || isNew) ? "rgb(108 107 105 / 0.45)" : isActive ? `hsl(${hue}, 80%, 60%)` : `hsl(${hue}, 60%, 60%)`
+    const hue = typeof tag === 'object' ? tag.hue : 30
+    const dotColor = isNew ? "rgb(108 107 105 / 0.45)"
+        : isActive ? `hsl(${hue}, 80%, 60%)`
+        : isSelected ? `hsl(${hue}, 60%, 60%)`
+        : `hsl(${hue}, 50%, 40%)`
 
     const label = typeof tag === "string" ? tag : tag.label
     const count = typeof tag === "object" ? tag.count : undefined
@@ -26,7 +29,7 @@ export default function TagChip({ tag, state = "idle", size = "md", onClick }) {
                  className="h-1.5 w-1.5 rounded-full shrink-0 self-center"
              />
             {label}
-            {count !== undefined && <span className="text-dusk-dim text-[11px]">{count}</span>}
+            {showCount && count !== undefined && <span className="text-dusk-dim text-[11px]">{count}</span>}
         </button>
     )
 }
