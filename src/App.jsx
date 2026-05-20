@@ -5,6 +5,14 @@ import {useSpotifyAuth} from "./components/spotify/useSpotifyAuth.js";
 import { redirectToAuthCodeFlow } from "./components/spotify/auth.js";
 
 
+async function handleLogin() {
+  try {
+    await redirectToAuthCodeFlow()
+  } catch (e) {
+    console.error('Login failed:', e)
+  }
+}
+
 export default function App() {
   const { tokens, error, handleReset } = useSpotifyAuth()
 
@@ -13,6 +21,6 @@ export default function App() {
   }
 
   return (
-      <AuthScreen onLogin={redirectToAuthCodeFlow} />
+      <AuthScreen onLogin={handleLogin} />
   )
 }
