@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import { fetchUserData, saveTrackTags, saveTag, savePreset, deletePreset } from '../lib/apiClient.js'
-import { fetchUserProfile, fetchPlaylists, fetchPlaylistTracks, fetchLikedSongs, normalizeTrack, normalizePlaylist } from '../lib/spotifyApi.js'
+import { fetchPlaylists, fetchPlaylistTracks, fetchLikedSongs, normalizeTrack, normalizePlaylist } from '../lib/spotifyApi.js'
 
-const LIKED_PLAYLIST = { id: 'liked', label: 'Liked Songs', trackIds: [], loaded: false, total: null, pinned: true }
+const LIKED_PLAYLIST = { id: 'liked', label: 'Liked Songs', trackIds: [], loaded: false, total: null, pinned: true, nextUrl: null }
 
 export const useStore = create((set, get) => ({
 
@@ -59,11 +59,8 @@ export const useStore = create((set, get) => ({
     loadUserData: async (accessToken) => {
         set({ userDataLoading: true })
         try {
-            const [{ tags, trackTags, presets }, profile] = await Promise.all([
-                fetchUserData(accessToken),
-                fetchUserProfile(accessToken),
-            ])
-            const rawPlaylists = await fetchPlaylists(accessToken, profile.id)
+            const { userId, tags, trackTags, presets } = await fetchUserData(accessToken)
+            const rawPlaylists = await fetchPlaylists(accessToken, userId)
 
             const tagMap = Object.fromEntries(
                 trackTags.map(({ track_id, tag_ids }) => [track_id, tag_ids])
@@ -95,9 +92,15 @@ export const useStore = create((set, get) => ({
 
         set({ playlistLoading: true })
         try {
-            const rawItems = playlistId === 'liked'
-                ? await fetchLikedSongs(accessToken)
-                : await fetchPlaylistTracks(accessToken, playlistId)
+            let rawItems, nextUrl = null, total = null
+            if (playlistId === 'liked') {
+                const result = await fetchLikedSongs(accessToken)
+                rawItems = result.items
+                nextUrl  = result.next
+                total    = result.total
+            } else {
+                rawItems = await fetchPlaylistTracks(accessToken, playlistId)
+            }
 
             const normalized = rawItems.map(normalizeTrack).filter(Boolean)
             const newTracks  = Object.fromEntries(normalized.map(t => [t.id, t]))
@@ -106,11 +109,43 @@ export const useStore = create((set, get) => ({
             set(s => ({
                 tracks: { ...s.tracks, ...newTracks },
                 playlists: s.playlists.map(p =>
-                    p.id === playlistId ? { ...p, trackIds, loaded: true } : p
+                    p.id === playlistId
+                        ? { ...p, trackIds, loaded: true, ...(playlistId === 'liked' ? { nextUrl, total } : {}) }
+                        : p
                 ),
             }))
         } catch (e) {
             console.error(`Failed to load tracks for ${playlistId}:`, e)
+        } finally {
+            set({ playlistLoading: false })
+        }
+    },
+
+    loadMoreLikedSongs: async () => {
+        const { playlists, accessToken } = get()
+        const liked = playlists.find(p => p.id === 'liked')
+        if (!liked?.nextUrl) return
+
+        set({ playlistLoading: true })
+        try {
+            const nextUrlObj = new URL(liked.nextUrl)
+            const offset = parseInt(nextUrlObj.searchParams.get('offset') ?? '0', 10)
+            const result  = await fetchLikedSongs(accessToken, offset)
+
+            const normalized  = result.items.map(normalizeTrack).filter(Boolean)
+            const newTracks   = Object.fromEntries(normalized.map(t => [t.id, t]))
+            const newTrackIds = normalized.map(t => t.id)
+
+            set(s => ({
+                tracks: { ...s.tracks, ...newTracks },
+                playlists: s.playlists.map(p =>
+                    p.id === 'liked'
+                        ? { ...p, trackIds: [...p.trackIds, ...newTrackIds], nextUrl: result.next }
+                        : p
+                ),
+            }))
+        } catch (e) {
+            console.error('Failed to load more liked songs:', e)
         } finally {
             set({ playlistLoading: false })
         }

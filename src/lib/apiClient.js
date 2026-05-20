@@ -13,12 +13,7 @@ async function apiFetch(path, accessToken, options = {}) {
 }
 
 export async function fetchUserData(accessToken) {
-  const [tags, trackTags, presets] = await Promise.all([
-    apiFetch('/api/tags', accessToken),
-    apiFetch('/api/track-tags', accessToken),
-    apiFetch('/api/presets', accessToken),
-  ])
-  return { tags, trackTags, presets }
+  return apiFetch('/api/user-data', accessToken)
 }
 
 export async function saveTrackTags(accessToken, trackId, tagIds) {

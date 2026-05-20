@@ -5,11 +5,14 @@ import TagChip from './TagChip.jsx'
 export default function TrackList() {
   const tracks = useStore(useShallow(visibleTracks))
   const playlist = useStore(s => s.playlists.find(p => p.id === s.activePlaylistId))
+  const activePlaylistId = useStore(s => s.activePlaylistId)
   const allTags = useStore(s => s.tags)
   const tagMap = useStore(s => s.tagMap)
   const selectedTrackId = useStore(s => s.selectedTrackId)
   const setSelectedTrack = useStore(s => s.setSelectedTrack)
   const playlistLoading = useStore(s => s.playlistLoading)
+  const loadMoreLikedSongs = useStore(s => s.loadMoreLikedSongs)
+  const likedNextUrl = useStore(s => s.playlists.find(p => p.id === 'liked')?.nextUrl ?? null)
 
   if (playlistLoading) return (
     <div className="flex items-center justify-center h-48">
@@ -19,7 +22,12 @@ export default function TrackList() {
 
   return (
     <div className="flex flex-col gap-1">
-      <h2 className="text-lg font-semibold mb-4">{playlist?.label}</h2>
+      <div className="flex items-baseline gap-2 mb-4">
+        <h2 className="text-lg font-semibold">{playlist?.label}</h2>
+        {playlist?.total && (
+          <span className="text-xs text-dusk-dim">{tracks.length} / {playlist.total}</span>
+        )}
+      </div>
       {tracks.map((track, i) => (
         <div
           key={track.id}
@@ -45,6 +53,15 @@ export default function TrackList() {
           <span className="text-xs text-dusk-dim shrink-0">{track.dur}</span>
         </div>
       ))}
+      {activePlaylistId === 'liked' && likedNextUrl && (
+        <button
+          onClick={loadMoreLikedSongs}
+          disabled={playlistLoading}
+          className="mt-2 w-full py-2 text-sm text-dusk-mute hover:text-dusk-fg border border-line hover:border-line-hi rounded-lg transition-colors disabled:opacity-50"
+        >
+          {playlistLoading ? 'Loading…' : 'Load more'}
+        </button>
+      )}
     </div>
   )
 }

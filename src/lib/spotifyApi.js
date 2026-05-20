@@ -79,12 +79,13 @@ export async function fetchPlaylistTracks(accessToken, playlistId) {
 }
 
 export async function fetchLikedSongs(accessToken, offset = 0) {
-  const results = []
-  let url = `https://api.spotify.com/v1/me/tracks?limit=50&offset=${offset}`
-  while (url) {
-    const data = await spotifyFetch(url, accessToken)
-    results.push(...data.items.filter(item => item.track?.id))
-    url = data.next
+  const data = await spotifyFetch(
+    `https://api.spotify.com/v1/me/tracks?limit=50&offset=${offset}`,
+    accessToken
+  )
+  return {
+    items: data.items.filter(item => item.track?.id),
+    next:  data.next,
+    total: data.total,
   }
-  return results
 }
