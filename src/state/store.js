@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { TRACKS, PLAYLISTS } from '../data/mocks.js'
-import { fetchUserData } from '../lib/apiClient.js'
+import { fetchUserData, saveTrackTags } from '../lib/apiClient.js'
 
 export const useStore = create((set, get) => ({
 
@@ -11,11 +11,15 @@ export const useStore = create((set, get) => ({
     presets:   [],       // loaded from API
     tagMap:    {},       // loaded from API — { [trackId]: string[] }
 
-    // ── User data loading ─────────────────────────────────────────
+    // ── Session ───────────────────────────────────────────────────
+    accessToken: null,
     userDataLoading: true,
 
     // ── UI: active playlist ───────────────────────────────────────
     activePlaylistId: 'liked',
+
+    // ── UI: selected track (tag editor) ──────────────────────────
+    selectedTrackId: null,
 
     // ── UI: deck ─────────────────────────────────────────────────
     deck: {
@@ -58,6 +62,21 @@ export const useStore = create((set, get) => ({
     toggleShuffle: () => set((s) => ({
         deck: { ...s.deck, shuffle: !s.deck.shuffle }
     })),
+
+    setAccessToken: (token) => set({ accessToken: token }),
+
+    setSelectedTrack: (id) => set(s => ({
+        selectedTrackId: s.selectedTrackId === id ? null : id,
+    })),
+
+    setTagForTrack: async (trackId, tagIds) => {
+        set(s => ({ tagMap: { ...s.tagMap, [trackId]: tagIds } }))
+        try {
+            await saveTrackTags(get().accessToken, trackId, tagIds)
+        } catch (e) {
+            console.error('Failed to save tags:', e)
+        }
+    },
 
     loadUserData: async (accessToken) => {
         set({ userDataLoading: true })

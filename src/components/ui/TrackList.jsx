@@ -7,6 +7,8 @@ export default function TrackList() {
   const playlist = useStore(s => s.playlists.find(p => p.id === s.activePlaylistId))
   const allTags = useStore(s => s.tags)
   const tagMap = useStore(s => s.tagMap)
+  const selectedTrackId = useStore(s => s.selectedTrackId)
+  const setSelectedTrack = useStore(s => s.setSelectedTrack)
 
   return (
     <div className="flex flex-col gap-1">
@@ -14,7 +16,9 @@ export default function TrackList() {
       {tracks.map((track, i) => (
         <div
           key={track.id}
-          className="flex items-center gap-4 px-3 py-2.5 rounded-lg hover:bg-dusk-800 transition-colors group"
+          onClick={() => setSelectedTrack(track.id)}
+          className={`flex items-center gap-4 px-3 py-2.5 rounded-lg transition-colors cursor-pointer group
+            ${track.id === selectedTrackId ? 'bg-dusk-700' : 'hover:bg-dusk-800'}`}
         >
           <span className="text-dusk-dim text-xs w-4 shrink-0 text-right">{i + 1}</span>
           <div

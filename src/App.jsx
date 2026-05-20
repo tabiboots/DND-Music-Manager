@@ -18,10 +18,14 @@ async function handleLogin() {
 export default function App() {
   const { tokens, error, handleReset } = useSpotifyAuth()
   const loadUserData = useStore(s => s.loadUserData)
+  const setAccessToken = useStore(s => s.setAccessToken)
   const userDataLoading = useStore(s => s.userDataLoading)
 
   useEffect(() => {
-    if (tokens) loadUserData(tokens.access_token)
+    if (tokens) {
+      setAccessToken(tokens.access_token)
+      loadUserData(tokens.access_token)
+    }
   }, [tokens])
 
   if (tokens && userDataLoading) {

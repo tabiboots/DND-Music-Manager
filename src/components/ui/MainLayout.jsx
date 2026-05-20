@@ -1,7 +1,11 @@
+import { useStore } from '../../state/store.js'
 import Sidebar from './Sidebar.jsx'
 import TrackList from './TrackList.jsx'
+import TagEditor from './TagEditor.jsx'
 
 export default function MainLayout() {
+  const selectedTrackId = useStore(s => s.selectedTrackId)
+
   return (
     <div className="h-screen flex flex-col bg-dusk-900 text-dusk-fg">
       <div className="flex flex-1 overflow-hidden">
@@ -9,8 +13,12 @@ export default function MainLayout() {
         <main className="flex-1 overflow-y-auto p-6">
           <TrackList />
         </main>
-        <aside className="w-72 shrink-0 border-l border-line p-4">
-          <p className="text-dusk-dim text-sm">Deck coming soon</p>
+        <aside className="w-72 shrink-0 border-l border-line">
+          {selectedTrackId ? <TagEditor /> : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-dusk-dim text-sm">Deck coming soon</p>
+            </div>
+          )}
         </aside>
       </div>
       <footer className="h-16 border-t border-line flex items-center px-6">
