@@ -6,8 +6,9 @@ export default function Sidebar() {
     const setActivePlaylist = useStore(s => s.setActivePlaylist)
 
     return (
-        <aside className="w-56 shrink-0 flex flex-col gap-1 p-4 border-r border-line">
-            <p className="text-xs font-semibold uppercase tracking-widest text-dusk-dim mb-2">Playlists</p>
+        <aside className="w-56 shrink-0 flex flex-col border-r border-line">
+            <p className="text-xs font-semibold uppercase tracking-widest text-dusk-dim px-4 pt-4 pb-2 shrink-0">Playlists</p>
+            <div className="flex-1 overflow-y-auto flex flex-col gap-1 px-4 pb-4">
             {playlists.map(p => (
                 <button
                     key={p.id}
@@ -21,6 +22,7 @@ export default function Sidebar() {
                     {p.label}
                 </button>
             ))}
+            </div>
         </aside>
     )
 }
