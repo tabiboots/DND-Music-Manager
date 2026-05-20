@@ -4,8 +4,8 @@ import { supabase } from './_lib/supabase.js'
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end()
 
-  const userId = await getSpotifyUser(req.headers.authorization)
-  if (!userId) return res.status(401).json({ error: 'Unauthorized' })
+  const { userId, status } = await getSpotifyUser(req.headers.authorization)
+  if (!userId) return res.status(status).json({ error: status === 429 ? 'Rate limited' : 'Unauthorized' })
 
   const [tagsResult, trackTagsResult, presetsResult] = await Promise.all([
     supabase.from('tags').select('id, label, hue, family').eq('spotify_user_id', userId),

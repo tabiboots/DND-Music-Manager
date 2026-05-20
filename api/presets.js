@@ -2,8 +2,8 @@ import { getSpotifyUser } from './_lib/spotify.js'
 import { supabase } from './_lib/supabase.js'
 
 export default async function handler(req, res) {
-  const userId = await getSpotifyUser(req.headers.authorization)
-  if (!userId) return res.status(401).json({ error: 'Unauthorized' })
+  const { userId, status } = await getSpotifyUser(req.headers.authorization)
+  if (!userId) return res.status(status).json({ error: status === 429 ? 'Rate limited' : 'Unauthorized' })
 
   if (req.method === 'GET') {
     const { data, error } = await supabase
