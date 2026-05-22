@@ -28,3 +28,4 @@ lesson-1.md
 *.sw?
 
 .vercel
+.env*

@@ -12,6 +12,7 @@ export default function TrackList() {
   const setSelectedTrack = useStore(s => s.setSelectedTrack)
   const playlistLoading = useStore(s => s.playlistLoading)
   const loadMoreLikedSongs = useStore(s => s.loadMoreLikedSongs)
+  const loadRecommendations = useStore(s => s.loadRecommendations)
   const likedNextUrl = useStore(s => s.playlists.find(p => p.id === 'liked')?.nextUrl ?? null)
 
   if (playlistLoading) return (
@@ -31,8 +32,7 @@ export default function TrackList() {
       {tracks.map((track, i) => (
         <div
           key={track.id}
-          onClick={() => setSelectedTrack(track.id)}
-          className={`flex items-center gap-4 px-3 py-2.5 rounded-lg transition-colors cursor-pointer group
+          className={`flex items-center gap-4 px-3 py-2.5 rounded-lg transition-colors group
             ${track.id === selectedTrackId ? 'bg-dusk-700' : 'hover:bg-dusk-800'}`}
         >
           <span className="text-dusk-dim text-xs w-4 shrink-0 text-right">{i + 1}</span>
@@ -40,7 +40,7 @@ export default function TrackList() {
             className="h-8 w-8 rounded shrink-0"
             style={{ background: `hsl(${track.hue}, 50%, 25%)` }}
           />
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setSelectedTrack(track.id)}>
             <p className="text-sm font-medium truncate text-dusk-fg">{track.title}</p>
             <p className="text-xs text-dusk-mute truncate">{track.artist}</p>
           </div>
@@ -50,6 +50,16 @@ export default function TrackList() {
               return tag ? <TagChip key={id} tag={tag} size="xs" showCount={false} /> : null
             })}
           </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              loadRecommendations(track.id)
+            }}
+            className="opacity-0 group-hover:opacity-100 text-xs text-dusk-mute hover:text-dusk-fg transition-all shrink-0 px-2 py-1 rounded border border-line hover:border-line-hi"
+            title="Find similar tracks"
+          >
+            Similar
+          </button>
           <span className="text-xs text-dusk-dim shrink-0">{track.dur}</span>
         </div>
       ))}

@@ -3,9 +3,12 @@ import { getValidTokens } from '../components/spotify/client.js'
 
 let loadUserDataInflight = null
 import { fetchUserData, saveTrackTags, saveTag, savePreset, deletePreset } from '../lib/apiClient.js'
-import { fetchPlaylists, fetchPlaylistTracks, fetchLikedSongs, normalizeTrack, normalizePlaylist } from '../lib/spotifyApi.js'
+import { fetchLikedSongs, fetchRecentlyPlayed, searchTracks, getRecommendations, normalizeTrack } from '../lib/spotifyApi.js'
 
 const LIKED_PLAYLIST = { id: 'liked', label: 'Liked Songs', trackIds: [], loaded: false, total: null, pinned: true, nextUrl: null }
+const RECENT_PLAYLIST = { id: 'recent', label: 'Recently Played', trackIds: [], loaded: false, total: null, pinned: true }
+const SEARCH_PLAYLIST = { id: 'search', label: 'Search Results', trackIds: [], loaded: true, total: null, pinned: false }
+const RECOMMENDATIONS_PLAYLIST = { id: 'recommendations', label: 'Similar Tracks', trackIds: [], loaded: true, total: null, pinned: false }
 
 export const useStore = create((set, get) => ({
 
@@ -21,8 +24,11 @@ export const useStore = create((set, get) => ({
     userDataLoading:    true,
     playlistLoading:    false,
 
+    // ── UI: search & browse ───────────────────────────────────────
+    searchQuery: '',
+
     // ── UI: active playlist ───────────────────────────────────────
-    activePlaylistId: 'liked',
+    activePlaylistId: 'recent',
 
     // ── UI: selected track (tag editor) ──────────────────────────
     selectedTrackId: null,
@@ -64,7 +70,11 @@ export const useStore = create((set, get) => ({
         set({ activePlaylistId: id })
         const playlist = get().playlists.find(p => p.id === id)
         if (playlist && !playlist.loaded) {
-            get().loadPlaylistTracks(id)
+            if (id === 'liked') {
+                get().loadPlaylistTracks(id)
+            } else if (id === 'recent') {
+                get().loadRecentlyPlayed()
+            }
         }
     },
 
@@ -73,8 +83,7 @@ export const useStore = create((set, get) => ({
         set({ userDataLoading: true })
         loadUserDataInflight = (async () => { try {
             const accessToken = await get().getAccessToken()
-            const { userId, tags, trackTags, presets } = await fetchUserData(accessToken)
-            const rawPlaylists = await fetchPlaylists(accessToken, userId)
+            const { tags, trackTags, presets } = await fetchUserData(accessToken)
 
             const tagMap = Object.fromEntries(
                 trackTags.map(({ track_id, tag_ids }) => [track_id, tag_ids])
@@ -86,12 +95,12 @@ export const useStore = create((set, get) => ({
                 matchMode:  p.match_mode,
                 lastUsedAt: p.last_used_at,
             }))
-            const playlists = [LIKED_PLAYLIST, ...rawPlaylists.map(normalizePlaylist)]
+            const playlists = [RECENT_PLAYLIST, LIKED_PLAYLIST, SEARCH_PLAYLIST, RECOMMENDATIONS_PLAYLIST]
 
             set({ tags, tagMap, presets: normalizedPresets, playlists })
 
-            // Load the default playlist immediately
-            await get().loadPlaylistTracks('liked')
+            // Load the default playlist (recently played) immediately
+            await get().loadRecentlyPlayed()
         } catch (e) {
             console.error('Failed to load user data:', e)
         } finally {
@@ -102,36 +111,29 @@ export const useStore = create((set, get) => ({
     },
 
     loadPlaylistTracks: async (playlistId) => {
+        if (playlistId !== 'liked') return
         const playlist = get().playlists.find(p => p.id === playlistId)
         if (!playlist || playlist.loaded) return
 
         set({ playlistLoading: true })
         try {
             const accessToken = await get().getAccessToken()
-            let rawItems, nextUrl = null, total = null
-            if (playlistId === 'liked') {
-                const result = await fetchLikedSongs(accessToken)
-                rawItems = result.items
-                nextUrl  = result.next
-                total    = result.total
-            } else {
-                rawItems = await fetchPlaylistTracks(accessToken, playlistId)
-            }
+            const result = await fetchLikedSongs(accessToken)
 
-            const normalized = rawItems.map(normalizeTrack).filter(Boolean)
+            const normalized = result.items.map(normalizeTrack).filter(Boolean)
             const newTracks  = Object.fromEntries(normalized.map(t => [t.id, t]))
             const trackIds   = normalized.map(t => t.id)
 
             set(s => ({
                 tracks: { ...s.tracks, ...newTracks },
                 playlists: s.playlists.map(p =>
-                    p.id === playlistId
-                        ? { ...p, trackIds, loaded: true, ...(playlistId === 'liked' ? { nextUrl, total } : {}) }
+                    p.id === 'liked'
+                        ? { ...p, trackIds, loaded: true, nextUrl: result.next, total: result.total }
                         : p
                 ),
             }))
         } catch (e) {
-            console.error(`Failed to load tracks for ${playlistId}:`, e)
+            console.error('Failed to load liked songs:', e)
         } finally {
             set({ playlistLoading: false })
         }
@@ -260,6 +262,86 @@ export const useStore = create((set, get) => ({
         } catch (e) {
             set(s => ({ presets: [...s.presets, removed] }))
             console.error('Failed to delete preset:', e)
+        }
+    },
+
+    searchForTracks: async (query) => {
+        set({ searchQuery: query })
+        if (!query.trim()) {
+            set(s => ({
+                playlists: s.playlists.map(p =>
+                    p.id === 'search' ? { ...p, trackIds: [] } : p
+                ),
+            }))
+            return
+        }
+
+        set({ playlistLoading: true })
+        try {
+            const accessToken = await get().getAccessToken()
+            const result = await searchTracks(accessToken, query)
+            const normalized = result.items.map(normalizeTrack).filter(Boolean)
+            const newTracks = Object.fromEntries(normalized.map(t => [t.id, t]))
+            const trackIds = normalized.map(t => t.id)
+
+            set(s => ({
+                tracks: { ...s.tracks, ...newTracks },
+                playlists: s.playlists.map(p =>
+                    p.id === 'search' ? { ...p, trackIds, loaded: true } : p
+                ),
+            }))
+        } catch (e) {
+            console.error('Failed to search tracks:', e)
+        } finally {
+            set({ playlistLoading: false })
+        }
+    },
+
+    loadRecentlyPlayed: async () => {
+        const recent = get().playlists.find(p => p.id === 'recent')
+        if (!recent || recent.loaded) return
+
+        set({ playlistLoading: true })
+        try {
+            const accessToken = await get().getAccessToken()
+            const result = await fetchRecentlyPlayed(accessToken)
+            const normalized = result.items.map(normalizeTrack).filter(Boolean)
+            const newTracks = Object.fromEntries(normalized.map(t => [t.id, t]))
+            const trackIds = normalized.map(t => t.id)
+
+            set(s => ({
+                tracks: { ...s.tracks, ...newTracks },
+                playlists: s.playlists.map(p =>
+                    p.id === 'recent' ? { ...p, trackIds, loaded: true } : p
+                ),
+            }))
+        } catch (e) {
+            console.error('Failed to load recently played:', e)
+        } finally {
+            set({ playlistLoading: false })
+        }
+    },
+
+    loadRecommendations: async (seedTrackId) => {
+        set({ playlistLoading: true })
+        try {
+            const accessToken = await get().getAccessToken()
+            const result = await getRecommendations(accessToken, [seedTrackId])
+            const normalized = result.items.map(normalizeTrack).filter(Boolean)
+            const newTracks = Object.fromEntries(normalized.map(t => [t.id, t]))
+            const trackIds = normalized.map(t => t.id)
+
+            set(s => ({
+                tracks: { ...s.tracks, ...newTracks },
+                playlists: s.playlists.map(p =>
+                    p.id === 'recommendations' ? { ...p, trackIds, loaded: true } : p
+                ),
+                activePlaylistId: 'recommendations',
+            }))
+        } catch (e) {
+            console.error('Failed to load recommendations:', e)
+        } finally {
+            set({ playlistLoading: false })
         }
     },
 

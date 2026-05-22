@@ -7,9 +7,9 @@ export default function Sidebar() {
 
     return (
         <aside className="w-56 shrink-0 flex flex-col border-r border-line">
-            <p className="text-xs font-semibold uppercase tracking-widest text-dusk-dim px-4 pt-4 pb-2 shrink-0">Playlists</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-dusk-dim px-4 pt-4 pb-2 shrink-0">Browse</p>
             <div className="flex-1 overflow-y-auto flex flex-col gap-1 px-4 pb-4">
-            {playlists.map(p => (
+            {playlists.filter(p => p.id !== 'search' && p.id !== 'recommendations').map(p => (
                 <button
                     key={p.id}
                     onClick={() => setActivePlaylist(p.id)}

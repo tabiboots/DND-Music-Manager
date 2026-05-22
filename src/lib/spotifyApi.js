@@ -39,43 +39,10 @@ export function normalizeTrack(item) {
   }
 }
 
-export function normalizePlaylist(p) {
-  return {
-    id:      p.id,
-    label:   p.name,
-    trackIds: [],
-    loaded:  false,
-    total:   p.tracks?.total ?? 0,
-    pinned:  false,
-  }
-}
-
 // ── Fetchers ──────────────────────────────────────────────────────────────
 
 export async function fetchUserProfile(accessToken) {
   return spotifyFetch('https://api.spotify.com/v1/me', accessToken)
-}
-
-export async function fetchPlaylists(accessToken, userId) {
-  const results = []
-  let url = 'https://api.spotify.com/v1/me/playlists?limit=50'
-  while (url) {
-    const data = await spotifyFetch(url, accessToken)
-    results.push(...data.items.filter(p => p && p.owner?.id === userId))
-    url = data.next
-  }
-  return results
-}
-
-export async function fetchPlaylistTracks(accessToken, playlistId) {
-  const results = []
-  let url = `https://api.spotify.com/v1/playlists/${playlistId}/items?limit=100`
-  while (url) {
-    const data = await spotifyFetch(url, accessToken)
-    results.push(...data.items.filter(item => item.track?.id))
-    url = data.next
-  }
-  return results
 }
 
 export async function fetchLikedSongs(accessToken, offset = 0) {
@@ -87,5 +54,43 @@ export async function fetchLikedSongs(accessToken, offset = 0) {
     items: data.items.filter(item => item.track?.id),
     next:  data.next,
     total: data.total,
+  }
+}
+
+export async function searchTracks(accessToken, query, limit = 20) {
+  if (!query.trim()) return { items: [] }
+  const params = new URLSearchParams({
+    q: query.trim(),
+    type: 'track',
+    limit: limit.toString(),
+  })
+  const data = await spotifyFetch(
+    `https://api.spotify.com/v1/search?${params}`,
+    accessToken
+  )
+  return {
+    items: data.tracks?.items?.filter(t => t?.id) ?? [],
+  }
+}
+
+export async function fetchRecentlyPlayed(accessToken, limit = 50) {
+  const data = await spotifyFetch(
+    `https://api.spotify.com/v1/me/player/recently-played?limit=${limit}`,
+    accessToken
+  )
+  return {
+    items: data.items?.map(item => ({ track: item.track })).filter(item => item.track?.id) ?? [],
+  }
+}
+
+export async function getRecommendations(accessToken, seedTracks, limit = 20) {
+  if (!seedTracks || seedTracks.length === 0) return { items: [] }
+  const seeds = seedTracks.slice(0, 5).join(',')
+  const data = await spotifyFetch(
+    `https://api.spotify.com/v1/recommendations?seed_tracks=${seeds}&limit=${limit}`,
+    accessToken
+  )
+  return {
+    items: data.tracks?.filter(t => t?.id) ?? [],
   }
 }
