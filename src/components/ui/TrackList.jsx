@@ -36,10 +36,18 @@ export default function TrackList() {
             ${track.id === selectedTrackId ? 'bg-dusk-700' : 'hover:bg-dusk-800'}`}
         >
           <span className="text-dusk-dim text-xs w-4 shrink-0 text-right">{i + 1}</span>
-          <div
-            className="h-8 w-8 rounded shrink-0"
-            style={{ background: `hsl(${track.hue}, 50%, 25%)` }}
-          />
+          {track.albumArt ? (
+            <img
+              src={track.albumArt}
+              alt={`${track.title} album art`}
+              className="h-8 w-8 rounded shrink-0 object-cover"
+            />
+          ) : (
+            <div
+              className="h-8 w-8 rounded shrink-0"
+              style={{ background: `hsl(${track.hue}, 50%, 25%)` }}
+            />
+          )}
           <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setSelectedTrack(track.id)}>
             <p className="text-sm font-medium truncate text-dusk-fg">{track.title}</p>
             <p className="text-xs text-dusk-mute truncate">{track.artist}</p>

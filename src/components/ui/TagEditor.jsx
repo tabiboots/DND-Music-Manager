@@ -87,7 +87,7 @@ export default function TagEditor() {
   const setSelectedTrack = useStore(s => s.setSelectedTrack)
   const setTagForTrack  = useStore(s => s.setTagForTrack)
 
-  const track = tracks.find(t => t.id === selectedTrackId)
+  const track = tracks[selectedTrackId]
   const assignedIds = tagMap[selectedTrackId] ?? []
 
   const query = filter.trim().toLowerCase()
@@ -118,10 +118,18 @@ export default function TagEditor() {
 
       {/* Header */}
       <div className="flex items-center gap-3 p-4 border-b border-line shrink-0">
-        <div
-          className="h-8 w-8 rounded shrink-0"
-          style={{ background: `hsl(${track.hue}, 50%, 25%)` }}
-        />
+        {track.albumArt ? (
+          <img
+            src={track.albumArt}
+            alt={`${track.title} album art`}
+            className="h-8 w-8 rounded shrink-0 object-cover"
+          />
+        ) : (
+          <div
+            className="h-8 w-8 rounded shrink-0"
+            style={{ background: `hsl(${track.hue}, 50%, 25%)` }}
+          />
+        )}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-dusk-fg truncate">{track.title}</p>
           <p className="text-xs text-dusk-mute truncate">{track.artist}</p>
