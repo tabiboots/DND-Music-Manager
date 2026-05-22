@@ -57,12 +57,12 @@ export async function fetchLikedSongs(accessToken, offset = 0) {
   }
 }
 
-export async function searchTracks(accessToken, query, limit = 20) {
+export async function searchTracks(accessToken, query, limit = 10) {
   if (!query.trim()) return { items: [] }
   const params = new URLSearchParams({
     q: query.trim(),
     type: 'track',
-    limit: limit.toString(),
+    limit: Math.min(limit, 10).toString(), // Spotify max is 10
   })
   const data = await spotifyFetch(
     `https://api.spotify.com/v1/search?${params}`,
