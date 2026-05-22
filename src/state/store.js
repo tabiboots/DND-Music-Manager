@@ -3,10 +3,11 @@ import { getValidTokens } from '../components/spotify/client.js'
 
 let loadUserDataInflight = null
 import { fetchUserData, saveTrackTags, saveTag, deleteTag, savePreset, deletePreset } from '../lib/apiClient.js'
-import { fetchLikedSongs, fetchRecentlyPlayed, searchTracks, getRecommendations, normalizeTrack } from '../lib/spotifyApi.js'
+import { fetchLikedSongs, fetchRecentlyPlayed, searchTracks, getRecommendations, fetchTracksByIds, normalizeTrack } from '../lib/spotifyApi.js'
 
-const LIKED_PLAYLIST = { id: 'liked', label: 'Liked Songs', trackIds: [], loaded: false, total: null, pinned: true, nextUrl: null }
 const RECENT_PLAYLIST = { id: 'recent', label: 'Recently Played', trackIds: [], loaded: false, total: null, pinned: true }
+const TAGGED_PLAYLIST = { id: 'tagged', label: 'Tagged Songs', trackIds: [], loaded: false, total: null, pinned: true }
+const LIKED_PLAYLIST = { id: 'liked', label: 'Liked Songs', trackIds: [], loaded: false, total: null, pinned: true, nextUrl: null }
 const SEARCH_PLAYLIST = { id: 'search', label: 'Search Results', trackIds: [], loaded: true, total: null, pinned: false }
 const RECOMMENDATIONS_PLAYLIST = { id: 'recommendations', label: 'Similar Tracks', trackIds: [], loaded: true, total: null, pinned: false }
 
@@ -28,7 +29,7 @@ export const useStore = create((set, get) => ({
     searchQuery: '',
 
     // ── UI: active playlist ───────────────────────────────────────
-    activePlaylistId: 'recent',
+    activePlaylistId: 'tagged',
 
     // ── UI: selected track (tag editor) ──────────────────────────
     selectedTrackId: null,
@@ -74,6 +75,8 @@ export const useStore = create((set, get) => ({
                 get().loadPlaylistTracks(id)
             } else if (id === 'recent') {
                 get().loadRecentlyPlayed()
+            } else if (id === 'tagged') {
+                get().loadTaggedSongs()
             }
         }
     },
@@ -95,12 +98,12 @@ export const useStore = create((set, get) => ({
                 matchMode:  p.match_mode,
                 lastUsedAt: p.last_used_at,
             }))
-            const playlists = [RECENT_PLAYLIST, LIKED_PLAYLIST, SEARCH_PLAYLIST, RECOMMENDATIONS_PLAYLIST]
+            const playlists = [TAGGED_PLAYLIST, RECENT_PLAYLIST, LIKED_PLAYLIST, SEARCH_PLAYLIST, RECOMMENDATIONS_PLAYLIST]
 
             set({ tags, tagMap, presets: normalizedPresets, playlists })
 
-            // Load the default playlist (recently played) immediately
-            await get().loadRecentlyPlayed()
+            // Load the default playlist (tagged songs) immediately
+            await get().loadTaggedSongs()
         } catch (e) {
             console.error('Failed to load user data:', e)
         } finally {
@@ -246,11 +249,34 @@ export const useStore = create((set, get) => ({
     },
 
     setTagForTrack: async (trackId, tagIds) => {
+        const oldTagIds = get().tagMap[trackId] ?? []
         set(s => ({ tagMap: { ...s.tagMap, [trackId]: tagIds } }))
+
+        // Update tagged playlist if it's loaded
+        const taggedPlaylist = get().playlists.find(p => p.id === 'tagged')
+        if (taggedPlaylist?.loaded) {
+            set(s => ({
+                playlists: s.playlists.map(p => {
+                    if (p.id !== 'tagged') return p
+
+                    const shouldBeInList = tagIds.length > 0
+                    const isInList = p.trackIds.includes(trackId)
+
+                    if (shouldBeInList && !isInList) {
+                        return { ...p, trackIds: [...p.trackIds, trackId] }
+                    } else if (!shouldBeInList && isInList) {
+                        return { ...p, trackIds: p.trackIds.filter(id => id !== trackId) }
+                    }
+                    return p
+                })
+            }))
+        }
+
         try {
             const accessToken = await get().getAccessToken()
             await saveTrackTags(accessToken, trackId, tagIds)
         } catch (e) {
+            set(s => ({ tagMap: { ...s.tagMap, [trackId]: oldTagIds } }))
             console.error('Failed to save tags:', e)
         }
     },
@@ -337,6 +363,51 @@ export const useStore = create((set, get) => ({
             }))
         } catch (e) {
             console.error('Failed to load recently played:', e)
+        } finally {
+            set({ playlistLoading: false })
+        }
+    },
+
+    loadTaggedSongs: async () => {
+        const tagged = get().playlists.find(p => p.id === 'tagged')
+        if (!tagged || tagged.loaded) return
+
+        set({ playlistLoading: true })
+        try {
+            const accessToken = await get().getAccessToken()
+            const tagMap = get().tagMap
+
+            // Get all track IDs that have tags
+            const taggedTrackIds = Object.keys(tagMap).filter(trackId => tagMap[trackId]?.length > 0)
+
+            if (taggedTrackIds.length === 0) {
+                set(s => ({
+                    playlists: s.playlists.map(p =>
+                        p.id === 'tagged' ? { ...p, trackIds: [], loaded: true } : p
+                    ),
+                }))
+                return
+            }
+
+            // Fetch tracks that we don't already have
+            const existingTracks = get().tracks
+            const tracksToFetch = taggedTrackIds.filter(id => !existingTracks[id])
+
+            let newTracks = {}
+            if (tracksToFetch.length > 0) {
+                const result = await fetchTracksByIds(accessToken, tracksToFetch)
+                const normalized = result.items.map(normalizeTrack).filter(Boolean)
+                newTracks = Object.fromEntries(normalized.map(t => [t.id, t]))
+            }
+
+            set(s => ({
+                tracks: { ...s.tracks, ...newTracks },
+                playlists: s.playlists.map(p =>
+                    p.id === 'tagged' ? { ...p, trackIds: taggedTrackIds, loaded: true } : p
+                ),
+            }))
+        } catch (e) {
+            console.error('Failed to load tagged songs:', e)
         } finally {
             set({ playlistLoading: false })
         }

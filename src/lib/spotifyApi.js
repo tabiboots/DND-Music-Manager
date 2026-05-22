@@ -103,3 +103,24 @@ export async function getRecommendations(accessToken, seedTracks, limit = 20) {
     items: data.tracks?.filter(t => t?.id) ?? [],
   }
 }
+
+export async function fetchTracksByIds(accessToken, trackIds) {
+  if (!trackIds || trackIds.length === 0) return { items: [] }
+  // Spotify allows max 50 IDs per request
+  const chunks = []
+  for (let i = 0; i < trackIds.length; i += 50) {
+    chunks.push(trackIds.slice(i, i + 50))
+  }
+
+  const results = []
+  for (const chunk of chunks) {
+    const ids = chunk.join(',')
+    const data = await spotifyFetch(
+      `https://api.spotify.com/v1/tracks?ids=${ids}`,
+      accessToken
+    )
+    results.push(...(data.tracks?.filter(t => t?.id) ?? []))
+  }
+
+  return { items: results }
+}
