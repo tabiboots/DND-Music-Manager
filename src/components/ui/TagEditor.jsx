@@ -86,6 +86,7 @@ export default function TagEditor() {
   const tagMap          = useStore(s => s.tagMap)
   const setSelectedTrack = useStore(s => s.setSelectedTrack)
   const setTagForTrack  = useStore(s => s.setTagForTrack)
+  const removeTag       = useStore(s => s.removeTag)
 
   const track = tracks[selectedTrackId]
   const assignedIds = tagMap[selectedTrackId] ?? []
@@ -163,12 +164,25 @@ export default function TagEditor() {
             <p className="text-[10px] uppercase tracking-widest text-dusk-dim mb-2">{family}</p>
             <div className="flex flex-wrap gap-2">
               {familyTags.map(tag => (
-                <TagChip
-                  key={tag.id}
-                  tag={tag}
-                  state={assignedIds.includes(tag.id) ? 'selected' : 'idle'}
-                  onClick={() => toggle(tag.id)}
-                />
+                <div key={tag.id} className="relative group/tag">
+                  <TagChip
+                    tag={tag}
+                    state={assignedIds.includes(tag.id) ? 'selected' : 'idle'}
+                    onClick={() => toggle(tag.id)}
+                  />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (confirm(`Delete tag "${tag.label}"? This will remove it from all tracks.`)) {
+                        removeTag(tag.id)
+                      }
+                    }}
+                    className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-red-500 text-white text-[10px] leading-none opacity-0 group-hover/tag:opacity-100 transition-opacity hover:bg-red-600 flex items-center justify-center"
+                    title="Delete tag"
+                  >
+                    ×
+                  </button>
+                </div>
               ))}
             </div>
           </div>

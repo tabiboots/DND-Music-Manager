@@ -79,9 +79,15 @@ export async function fetchRecentlyPlayed(accessToken, limit = 20) {
     accessToken
   )
   // Response items are PlayHistoryObjects with a track property
+  // Deduplicate by track ID (keep first occurrence only)
+  const seen = new Set()
   const items = (data.items || [])
     .map(item => item.track)
-    .filter(track => track && track.id)
+    .filter(track => {
+      if (!track || !track.id || seen.has(track.id)) return false
+      seen.add(track.id)
+      return true
+    })
 
   return { items }
 }

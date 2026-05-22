@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { getValidTokens } from '../components/spotify/client.js'
 
 let loadUserDataInflight = null
-import { fetchUserData, saveTrackTags, saveTag, savePreset, deletePreset } from '../lib/apiClient.js'
+import { fetchUserData, saveTrackTags, saveTag, deleteTag, savePreset, deletePreset } from '../lib/apiClient.js'
 import { fetchLikedSongs, fetchRecentlyPlayed, searchTracks, getRecommendations, normalizeTrack } from '../lib/spotifyApi.js'
 
 const LIKED_PLAYLIST = { id: 'liked', label: 'Liked Songs', trackIds: [], loaded: false, total: null, pinned: true, nextUrl: null }
@@ -222,6 +222,26 @@ export const useStore = create((set, get) => ({
         } catch (e) {
             set(s => ({ tags: s.tags.filter(t => t.id !== id) }))
             console.error('Failed to create tag:', e)
+        }
+    },
+
+    removeTag: async (tagId) => {
+        const removed = get().tags.find(t => t.id === tagId)
+        set(s => ({
+            tags: s.tags.filter(t => t.id !== tagId),
+            tagMap: Object.fromEntries(
+                Object.entries(s.tagMap).map(([trackId, tagIds]) => [
+                    trackId,
+                    tagIds.filter(id => id !== tagId)
+                ])
+            )
+        }))
+        try {
+            const accessToken = await get().getAccessToken()
+            await deleteTag(accessToken, tagId)
+        } catch (e) {
+            set(s => ({ tags: [...s.tags, removed] }))
+            console.error('Failed to delete tag:', e)
         }
     },
 
