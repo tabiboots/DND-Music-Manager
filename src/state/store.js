@@ -372,22 +372,59 @@ export const useStore = create((set, get) => ({
         const tagged = get().playlists.find(p => p.id === 'tagged')
         if (!tagged || tagged.loaded) return
 
-        const tagMap = get().tagMap
-        const existingTracks = get().tracks
+        set({ playlistLoading: true })
+        try {
+            const accessToken = await get().getAccessToken()
+            const tagMap = get().tagMap
+            const existingTracks = get().tracks
 
-        // Get all track IDs that have tags AND are already loaded
-        // We only show tracks we already have data for (from Recently Played, Liked Songs, or Search)
-        const isValidSpotifyId = (id) => /^[a-zA-Z0-9]{22}$/.test(id)
-        const taggedTrackIds = Object.keys(tagMap)
-            .filter(trackId => tagMap[trackId]?.length > 0)
-            .filter(isValidSpotifyId)
-            .filter(trackId => existingTracks[trackId]) // Only show tracks we already have
+            // Get all track IDs that have tags
+            const isValidSpotifyId = (id) => /^[a-zA-Z0-9]{22}$/.test(id)
+            const taggedTrackIds = Object.keys(tagMap)
+                .filter(trackId => tagMap[trackId]?.length > 0)
+                .filter(isValidSpotifyId)
 
-        set(s => ({
-            playlists: s.playlists.map(p =>
-                p.id === 'tagged' ? { ...p, trackIds: taggedTrackIds, loaded: true } : p
-            ),
-        }))
+            if (taggedTrackIds.length === 0) {
+                set(s => ({
+                    playlists: s.playlists.map(p =>
+                        p.id === 'tagged' ? { ...p, trackIds: [], loaded: true } : p
+                    ),
+                }))
+                set({ playlistLoading: false })
+                return
+            }
+
+            // Fetch tracks we don't have yet
+            const tracksToFetch = taggedTrackIds.filter(id => !existingTracks[id])
+
+            let newTracks = {}
+            if (tracksToFetch.length > 0) {
+                try {
+                    const result = await fetchTracksByIds(accessToken, tracksToFetch)
+                    const normalized = result.items.map(normalizeTrack).filter(Boolean)
+                    newTracks = Object.fromEntries(normalized.map(t => [t.id, t]))
+                } catch (fetchError) {
+                    console.warn('Could not fetch some tracks, showing only loaded tracks:', fetchError)
+                    // Continue with just the tracks we have - don't fail completely
+                }
+            }
+
+            // Show all tagged tracks we have data for
+            const availableTaggedIds = taggedTrackIds.filter(id =>
+                existingTracks[id] || newTracks[id]
+            )
+
+            set(s => ({
+                tracks: { ...s.tracks, ...newTracks },
+                playlists: s.playlists.map(p =>
+                    p.id === 'tagged' ? { ...p, trackIds: availableTaggedIds, loaded: true } : p
+                ),
+            }))
+        } catch (e) {
+            console.error('Failed to load tagged songs:', e)
+        } finally {
+            set({ playlistLoading: false })
+        }
     },
 
     loadRecommendations: async (seedTrackId) => {

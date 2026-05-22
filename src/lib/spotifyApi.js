@@ -5,7 +5,11 @@ async function spotifyFetch(url, accessToken) {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
   if (res.status === 401) throw new Error('UNAUTHORIZED')
-  if (!res.ok) throw new Error(`Spotify error ${res.status}: ${url}`)
+  if (!res.ok) {
+    const errorBody = await res.text()
+    console.error(`Spotify API Error ${res.status}:`, errorBody)
+    throw new Error(`Spotify error ${res.status}: ${url}`)
+  }
   return res.json()
 }
 
