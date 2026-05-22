@@ -73,14 +73,17 @@ export async function searchTracks(accessToken, query, limit = 10) {
   }
 }
 
-export async function fetchRecentlyPlayed(accessToken, limit = 50) {
+export async function fetchRecentlyPlayed(accessToken, limit = 20) {
   const data = await spotifyFetch(
-    `https://api.spotify.com/v1/me/player/recently-played?limit=${limit}`,
+    `https://api.spotify.com/v1/me/player/recently-played?limit=${Math.min(limit, 50)}`,
     accessToken
   )
-  return {
-    items: data.items?.map(item => ({ track: item.track })).filter(item => item.track?.id) ?? [],
-  }
+  // Response items are PlayHistoryObjects with a track property
+  const items = (data.items || [])
+    .map(item => item.track)
+    .filter(track => track && track.id)
+
+  return { items }
 }
 
 export async function getRecommendations(accessToken, seedTracks, limit = 20) {
