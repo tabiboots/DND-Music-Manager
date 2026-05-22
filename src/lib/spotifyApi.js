@@ -116,7 +116,7 @@ export async function fetchTracksByIds(accessToken, trackIds) {
   for (const chunk of chunks) {
     const ids = chunk.join(',')
     const data = await spotifyFetch(
-      `https://api.spotify.com/v1/tracks?ids=${ids}`,
+      `https://api.spotify.com/v1/tracks?ids=${ids}&market=from_token`,
       accessToken
     )
     results.push(...(data.tracks?.filter(t => t?.id) ?? []))

@@ -378,7 +378,11 @@ export const useStore = create((set, get) => ({
             const tagMap = get().tagMap
 
             // Get all track IDs that have tags
-            const taggedTrackIds = Object.keys(tagMap).filter(trackId => tagMap[trackId]?.length > 0)
+            // Filter out invalid Spotify IDs (real IDs are 22 char base62 strings)
+            const isValidSpotifyId = (id) => /^[a-zA-Z0-9]{22}$/.test(id)
+            const taggedTrackIds = Object.keys(tagMap)
+                .filter(trackId => tagMap[trackId]?.length > 0)
+                .filter(isValidSpotifyId)
 
             if (taggedTrackIds.length === 0) {
                 set(s => ({
