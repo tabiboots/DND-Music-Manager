@@ -372,49 +372,22 @@ export const useStore = create((set, get) => ({
         const tagged = get().playlists.find(p => p.id === 'tagged')
         if (!tagged || tagged.loaded) return
 
-        set({ playlistLoading: true })
-        try {
-            const accessToken = await get().getAccessToken()
-            const tagMap = get().tagMap
+        const tagMap = get().tagMap
+        const existingTracks = get().tracks
 
-            // Get all track IDs that have tags
-            // Filter out invalid Spotify IDs (real IDs are 22 char base62 strings)
-            const isValidSpotifyId = (id) => /^[a-zA-Z0-9]{22}$/.test(id)
-            const taggedTrackIds = Object.keys(tagMap)
-                .filter(trackId => tagMap[trackId]?.length > 0)
-                .filter(isValidSpotifyId)
+        // Get all track IDs that have tags AND are already loaded
+        // We only show tracks we already have data for (from Recently Played, Liked Songs, or Search)
+        const isValidSpotifyId = (id) => /^[a-zA-Z0-9]{22}$/.test(id)
+        const taggedTrackIds = Object.keys(tagMap)
+            .filter(trackId => tagMap[trackId]?.length > 0)
+            .filter(isValidSpotifyId)
+            .filter(trackId => existingTracks[trackId]) // Only show tracks we already have
 
-            if (taggedTrackIds.length === 0) {
-                set(s => ({
-                    playlists: s.playlists.map(p =>
-                        p.id === 'tagged' ? { ...p, trackIds: [], loaded: true } : p
-                    ),
-                }))
-                return
-            }
-
-            // Fetch tracks that we don't already have
-            const existingTracks = get().tracks
-            const tracksToFetch = taggedTrackIds.filter(id => !existingTracks[id])
-
-            let newTracks = {}
-            if (tracksToFetch.length > 0) {
-                const result = await fetchTracksByIds(accessToken, tracksToFetch)
-                const normalized = result.items.map(normalizeTrack).filter(Boolean)
-                newTracks = Object.fromEntries(normalized.map(t => [t.id, t]))
-            }
-
-            set(s => ({
-                tracks: { ...s.tracks, ...newTracks },
-                playlists: s.playlists.map(p =>
-                    p.id === 'tagged' ? { ...p, trackIds: taggedTrackIds, loaded: true } : p
-                ),
-            }))
-        } catch (e) {
-            console.error('Failed to load tagged songs:', e)
-        } finally {
-            set({ playlistLoading: false })
-        }
+        set(s => ({
+            playlists: s.playlists.map(p =>
+                p.id === 'tagged' ? { ...p, trackIds: taggedTrackIds, loaded: true } : p
+            ),
+        }))
     },
 
     loadRecommendations: async (seedTrackId) => {
