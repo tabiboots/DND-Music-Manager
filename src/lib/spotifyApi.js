@@ -119,11 +119,30 @@ export async function fetchTracksByIds(accessToken, trackIds) {
   const results = []
   for (const chunk of chunks) {
     const ids = chunk.join(',')
-    const data = await spotifyFetch(
-      `https://api.spotify.com/v1/tracks?ids=${ids}`,
-      accessToken
-    )
-    results.push(...(data.tracks?.filter(t => t?.id) ?? []))
+    try {
+      const data = await spotifyFetch(
+        `https://api.spotify.com/v1/tracks?ids=${ids}`,
+        accessToken
+      )
+      results.push(...(data.tracks?.filter(t => t?.id) ?? []))
+    } catch (e) {
+      if (chunk.length === 1) {
+        console.warn(`Skipping track ${chunk[0]}: ${e.message}`)
+        continue
+      }
+      // Batch failed — retry each track individually to isolate bad IDs
+      for (const id of chunk) {
+        try {
+          const data = await spotifyFetch(
+            `https://api.spotify.com/v1/tracks?ids=${id}`,
+            accessToken
+          )
+          results.push(...(data.tracks?.filter(t => t?.id) ?? []))
+        } catch {
+          console.warn(`Skipping track ${id}: not fetchable (may be an episode or restricted)`)
+        }
+      }
+    }
   }
 
   return { items: results }
